@@ -1,0 +1,71 @@
+{
+  "name": "Review Responder Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "review-webhook",
+        "options": {}
+      },
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent",
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\":[{\n      \"text\": \"Draft a polite response to this review from {{ $json.body.customer_name }} with {{ $json.body.rating }} stars: {{ $json.body.review_text }}\"\n    }]\n  }]\n}"
+      },
+      "name": "AI Draft Reply (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "channel": "#reviews-approval",
+        "text": "=⭐ *New Review Alert*\n*Customer:* {{ $json.body.customer_name }}\n*Rating:* {{ $json.body.rating }}/5\n*Review:* {{ $json.body.review_text }}"
+      },
+      "name": "Slack Approval Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [650, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Draft Reply (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Draft Reply (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Slack Approval Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
